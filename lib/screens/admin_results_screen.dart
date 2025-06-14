@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/session_model.dart';
+import '../models/question_model.dart';
 
 class AdminResultsScreen extends StatelessWidget {
   const AdminResultsScreen({Key? key}) : super(key: key);
@@ -46,11 +47,12 @@ class AdminResultsScreen extends StatelessWidget {
                                   .map((option) => Text('• $option'))
                                   .toList(),
                         ),
-                      if ((question.maxOptions ?? 1) > 1)
+                      // TUTAJ NASTĄPIŁA POPRAWKA
+                      if ((question.maxSelectable ?? 1) > 1)
                         Padding(
                           padding: const EdgeInsets.only(top: 8.0),
                           child: Text(
-                            'Maksymalna liczba wyborów: ${question.maxOptions}',
+                            'Maksymalna liczba wyborów: ${question.maxSelectable}', // TUTAJ TEŻ POPRAWKA
                             style: const TextStyle(fontStyle: FontStyle.italic),
                           ),
                         ),
