@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'dart:convert';
+
 import '../models/session_model.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -45,7 +48,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Panel administratora')),
+      appBar: AppBar(
+        title: const Text('Panel administratora'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Wróć na ekran startowy',
+            onPressed: () {
+              Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+            },
+          ),
+        ],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: ListView(
@@ -66,15 +80,25 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             if (Hive.isBoxOpen('sessions') && sessionBox.isNotEmpty)
               ...sessionBox.values.map(
                 (session) => Card(
-                  child: ListTile(
-                    title: Text(session.title),
-                    subtitle: Text(
-                      'Pytania: ${session.questions.length}, Tryb: ${session.isAnonymous ? "Tajne" : "Jawne"}',
-                    ),
-                    trailing: ElevatedButton(
-                      onPressed: () => _closeSession(session.id),
-                      child: const Text('ZAMKNIJ SESJĘ'),
-                    ),
+                  child: Column(
+                    children: [
+                      ListTile(
+                        title: Text(session.title),
+                        subtitle: Text(
+                          'Kod sesji: ${session.id}\nPytania: ${session.questions.length}, Tryb: ${session.isAnonymous ? "Tajne" : "Jawne"}',
+                        ),
+                        trailing: ElevatedButton(
+                          onPressed: () => _closeSession(session.id),
+                          child: const Text('ZAMKNIJ SESJĘ'),
+                        ),
+                      ),
+                      QrImageView(
+                        data: jsonEncode(session.toJson()),
+                        version: QrVersions.auto,
+                        size: 200.0,
+                      ),
+                      const SizedBox(height: 12),
+                    ],
                   ),
                 ),
               )
@@ -92,7 +116,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   child: ListTile(
                     title: Text(session.title),
                     subtitle: Text(
-                      'Pytania: ${session.questions.length}, Tryb: ${session.isAnonymous ? "Tajne" : "Jawne"}',
+                      'Kod sesji: ${session.id}\nPytania: ${session.questions.length}, Tryb: ${session.isAnonymous ? "Tajne" : "Jawne"}',
                     ),
                     trailing: ElevatedButton(
                       onPressed: () => _openResults(session),
@@ -103,29 +127,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               )
             else
               const Text('Brak zakończonych sesji.'),
-            const Divider(height: 48),
-            const Text(
-              'ZOBACZ OSTATNIE SESJE',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            ...[
-                  ...(sessionBox.isOpen ? sessionBox.values.toList() : []),
-                  ...(archiveBox.isOpen ? archiveBox.values.toList() : []),
-                ].reversed
-                .take(5)
-                .map(
-                  (session) => Card(
-                    child: ListTile(
-                      title: Text(session.title),
-                      subtitle: Text(
-                        'Tryb: ${session.isAnonymous ? "Tajne" : "Jawne"}, Pytań: ${session.questions.length}',
-                      ),
-                      trailing: const Icon(Icons.arrow_forward),
-                      onTap: () => _openResults(session),
-                    ),
-                  ),
-                ),
           ],
         ),
       ),

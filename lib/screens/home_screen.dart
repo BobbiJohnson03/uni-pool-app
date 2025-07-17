@@ -30,9 +30,12 @@ class HomeScreen extends StatelessWidget {
               const Text('WYBIERZ SPOSÓB ŁĄCZENIA:'),
               const SizedBox(height: 8),
               ElevatedButton(
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.pushNamed(context, '/qr');
+                },
                 child: const Text('SKANUJ KOD QR'),
               ),
+
               const SizedBox(height: 8),
               ElevatedButton(
                 onPressed: () {

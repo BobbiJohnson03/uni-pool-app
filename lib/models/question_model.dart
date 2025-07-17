@@ -8,13 +8,13 @@ class QuestionModel extends HiveObject {
   String text;
 
   @HiveField(1)
-  String answerType; // 'yes_no', 'yes_no_abstain', 'multiple_choice'
+  String answerType; // e.g. 'singleChoice', 'multipleChoice', 'yesNo', etc.
 
   @HiveField(2)
-  List<String>? options; // tylko dla multiple_choice
+  List<String>? options;
 
   @HiveField(3)
-  int? maxSelectable; // tylko dla multiple_choice
+  int? maxSelectable;
 
   QuestionModel({
     required this.text,
@@ -22,4 +22,18 @@ class QuestionModel extends HiveObject {
     this.options,
     this.maxSelectable,
   });
+
+  Map<String, dynamic> toJson() => {
+    'text': text,
+    'answerType': answerType,
+    'options': options,
+    'maxSelectable': maxSelectable,
+  };
+
+  factory QuestionModel.fromJson(Map<String, dynamic> json) => QuestionModel(
+    text: json['text'],
+    answerType: json['answerType'],
+    options: (json['options'] as List?)?.cast<String>(),
+    maxSelectable: json['maxSelectable'],
+  );
 }

@@ -20,12 +20,8 @@ class _VoterJoinScreenState extends State<VoterJoinScreen> {
 
     if (box.containsKey(code)) {
       final session = box.get(code);
-      // TODO: Przejdź do ekranu głosowania z danymi sesji
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Połączono z sesją: ${session!.title}')),
-      );
-      // Na razie wracamy
-      Navigator.pop(context);
+      // Przejście do ekranu głosowania
+      Navigator.pushReplacementNamed(context, '/vote', arguments: session);
     } else {
       setState(() {
         error = 'Nie znaleziono sesji o podanym kodzie';

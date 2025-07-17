@@ -1,6 +1,6 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
-import 'package:uuid/uuid.dart';
 import '../models/session_model.dart';
 import '../models/question_model.dart';
 
@@ -22,6 +22,18 @@ class _AdminScreenState extends State<AdminScreen> {
   bool isAnonymous = true;
 
   List<QuestionModel> questions = [];
+
+  final _random = Random();
+
+  String _generateShortCode() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    return String.fromCharCodes(
+      Iterable.generate(
+        6,
+        (_) => chars.codeUnitAt(_random.nextInt(chars.length)),
+      ),
+    );
+  }
 
   void _addQuestion() {
     if (_questionTextController.text.trim().isEmpty) return;
@@ -47,20 +59,21 @@ class _AdminScreenState extends State<AdminScreen> {
   void _createSession() async {
     if (_formKey.currentState!.validate() && questions.isNotEmpty) {
       final session = SessionModel(
-        id: const Uuid().v4(),
+        id: _generateShortCode(),
         title: _titleController.text.trim(),
         isAnonymous: isAnonymous,
         questions: questions,
+        createdAt: DateTime.now(),
+        adminDeviceId: 'device123', // Możesz zamienić na realne ID urządzenia
       );
 
       final box = await Hive.openBox<SessionModel>('sessions');
       await box.put(session.id, session);
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Sesja została utworzona')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Sesja została utworzona! Kod: ${session.id}')),
+      );
 
-      // przekieruj bez możliwości cofania
       Navigator.pushNamedAndRemoveUntil(
         context,
         '/admin_dashboard',
@@ -128,6 +141,7 @@ class _AdminScreenState extends State<AdminScreen> {
                   child: const Text('Dodaj opcję'),
                 ),
                 Wrap(
+                  spacing: 8,
                   children:
                       currentOptions
                           .map((opt) => Chip(label: Text(opt)))
