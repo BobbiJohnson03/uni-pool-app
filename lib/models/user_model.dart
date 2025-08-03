@@ -1,6 +1,12 @@
 import 'package:hive/hive.dart';
-
 part 'user_model.g.dart';
+
+/* model reprezentujący uczestnika sesji - śledzi kto dołączył do sesji, z jakiego urządzenia 
+i czy jest administratorem, dzięki temu możemy:
+
+- rozróżniać admina i głosujących,
+- sprawdzić, kto był aktywny i kiedy,
+-przechowywać dane uczestników bez kont użytkowników  */
 
 @HiveType(typeId: 3)
 class UserModel extends HiveObject {

@@ -16,11 +16,13 @@ class VoteModelAdapter extends TypeAdapter<VoteModel> {
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return VoteModel(
+    return VoteModel.raw(
       sessionId: fields[0] as String,
       userId: fields[1] as String?,
+      encryptedAnswers: fields[2] as String,
       timestamp: fields[3] as DateTime,
       deviceId: fields[4] as String,
+      voteSignature: fields[5] as String,
     );
   }
 

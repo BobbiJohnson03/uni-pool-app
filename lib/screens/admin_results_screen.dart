@@ -3,7 +3,7 @@ import '../models/session_model.dart';
 import '../models/question_model.dart';
 
 class AdminResultsScreen extends StatelessWidget {
-  const AdminResultsScreen({Key? key}) : super(key: key);
+  const AdminResultsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {

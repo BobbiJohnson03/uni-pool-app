@@ -1,14 +1,13 @@
+import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:hive/hive.dart';
 import '../models/session_model.dart';
 import '../models/question_model.dart';
 import '../models/vote_model.dart';
+import '../network/websocket_client.dart';
 
 class VotingScreen extends StatefulWidget {
-  final SessionModel session;
-
-  const VotingScreen({Key? key, required this.session}) : super(key: key);
+  const VotingScreen({super.key});
 
   @override
   State<VotingScreen> createState() => _VotingScreenState();
@@ -17,26 +16,86 @@ class VotingScreen extends StatefulWidget {
 class _VotingScreenState extends State<VotingScreen> {
   final Map<int, dynamic> answers = {};
   bool isSubmitting = false;
+
   late String deviceId;
+  WebSocketVoteClient? wsClient;
+  late SessionModel session;
 
   @override
-  void initState() {
-    super.initState();
-    _generateDeviceId();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    final args = ModalRoute.of(context)?.settings.arguments as Map?;
+    if (args == null || args['session'] == null) {
+      _showErrorDialog("Brak danych sesji.");
+      return;
+    }
+
+    session = args['session'] as SessionModel;
+    deviceId = args['deviceId'] ?? _generateDeviceId();
+    wsClient = args['webSocketClient'];
+
+    wsClient?.onMessage = _handleServerResponse;
+    wsClient?.onError = (e) => _showErrorDialog('Błąd połączenia: $e');
+
     _checkSessionStatus();
   }
 
-  void _generateDeviceId() {
+  String _generateDeviceId() {
     final random = Random();
-    deviceId = 'device_${random.nextInt(999999).toString().padLeft(6, '0')}';
+    return 'device_${random.nextInt(999999).toString().padLeft(6, '0')}';
   }
 
   void _checkSessionStatus() {
-    if (!widget.session.isOpenForVoting) {
+    if (!session.isOpenForVoting) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _showSessionClosedDialog();
       });
     }
+  }
+
+  Future<void> _submitVote() async {
+    if (isSubmitting) return;
+    setState(() => isSubmitting = true);
+
+    try {
+      final vote = VoteModel(
+        sessionId: session.id,
+        userId: null,
+        answers: Map.fromEntries(
+          answers.entries.map((e) => MapEntry(e.key.toString(), e.value)),
+        ),
+
+        timestamp: DateTime.now(),
+        deviceId: deviceId,
+        encryptionKey: 'tajne-glosowanie',
+      );
+
+      if (wsClient != null) {
+        wsClient!.sendVote(vote.toJson());
+      } else {
+        // Tryb offline – zapisz lokalnie?
+        _showVoteSuccessDialog();
+      }
+    } catch (e) {
+      _showErrorDialog('Błąd: $e');
+      setState(() => isSubmitting = false);
+    }
+  }
+
+  void _handleServerResponse(String data) {
+    final json = jsonDecode(data);
+    switch (json['type']) {
+      case 'confirmation':
+        _showVoteSuccessDialog();
+        break;
+      case 'error':
+        _showErrorDialog(json['message']);
+        break;
+      default:
+        print('Nieznany komunikat z serwera.');
+    }
+    setState(() => isSubmitting = false);
   }
 
   void _showSessionClosedDialog() {
@@ -47,64 +106,10 @@ class _VotingScreenState extends State<VotingScreen> {
           (context) => AlertDialog(
             title: const Text('Sesja niedostępna'),
             content: Text(
-              widget.session.isExpired
+              session.isExpired
                   ? 'Sesja wygasła.'
                   : 'Sesja została zamknięta przez administratora.',
             ),
-            actions: [
-              TextButton(
-                onPressed:
-                    () => Navigator.of(
-                      context,
-                    ).popUntil((route) => route.settings.name == '/'),
-                child: const Text('OK'),
-              ),
-            ],
-          ),
-    );
-  }
-
-  Future<void> _submitVote() async {
-    if (isSubmitting) return;
-
-    setState(() => isSubmitting = true);
-
-    try {
-      final voteBox = await Hive.openBox<VoteModel>('votes');
-      final alreadyVoted = voteBox.values.any(
-        (v) => v.sessionId == widget.session.id && v.deviceId == deviceId,
-      );
-
-      if (alreadyVoted) {
-        _showAlreadyVotedDialog();
-        return;
-      }
-
-      final vote = VoteModel(
-        sessionId: widget.session.id,
-        userId: null,
-        answers: answers,
-        timestamp: DateTime.now(),
-        deviceId: deviceId,
-        encryptionKey: 'tajne-glosowanie',
-      );
-
-      await voteBox.add(vote);
-      _showVoteSuccessDialog();
-    } catch (e) {
-      _showErrorDialog('Błąd podczas zapisywania głosu: $e');
-    } finally {
-      setState(() => isSubmitting = false);
-    }
-  }
-
-  void _showAlreadyVotedDialog() {
-    showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Już głosowałeś'),
-            content: const Text('Twój głos został już zapisany w tej sesji.'),
             actions: [
               TextButton(
                 onPressed:
@@ -214,20 +219,25 @@ class _VotingScreenState extends State<VotingScreen> {
   }
 
   @override
+  void dispose() {
+    wsClient?.disconnect();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Głosowanie: ${widget.session.title}')),
+      appBar: AppBar(title: Text('Głosowanie: ${session.title}')),
       body: ListView.builder(
         padding: const EdgeInsets.all(16),
-        itemCount: widget.session.questions.length + 1,
+        itemCount: session.questions.length + 1,
         itemBuilder: (context, index) {
-          if (index == widget.session.questions.length) {
+          if (index == session.questions.length) {
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 24),
               child: ElevatedButton(
                 onPressed:
-                    answers.length == widget.session.questions.length &&
-                            !isSubmitting
+                    answers.length == session.questions.length && !isSubmitting
                         ? _submitVote
                         : null,
                 child:
@@ -238,7 +248,7 @@ class _VotingScreenState extends State<VotingScreen> {
             );
           }
 
-          final question = widget.session.questions[index];
+          final question = session.questions[index];
           return Card(
             margin: const EdgeInsets.only(bottom: 16),
             child: Padding(

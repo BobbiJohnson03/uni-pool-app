@@ -2,13 +2,17 @@ import 'package:hive/hive.dart';
 
 part 'question_model.g.dart';
 
+/*
+model pytania 
+*/
+
 @HiveType(typeId: 1)
 class QuestionModel extends HiveObject {
   @HiveField(0)
   String text;
 
   @HiveField(1)
-  String answerType; // e.g. 'singleChoice', 'multipleChoice', 'yesNo', etc.
+  String answerType; // enum   e.g. 'singleChoice', 'multipleChoice', 'yesNo', etc.
 
   @HiveField(2)
   List<String>? options;

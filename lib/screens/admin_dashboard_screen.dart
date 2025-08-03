@@ -1,12 +1,14 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'dart:convert';
-
 import '../models/session_model.dart';
+import '../local_server/local_vote_server.dart';
+import 'package:flutter/services.dart';
+import '../utils/network_utils.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
-  const AdminDashboardScreen({Key? key}) : super(key: key);
+  const AdminDashboardScreen({super.key});
 
   @override
   State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
@@ -16,25 +18,38 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   late Box<SessionModel> sessionBox;
   late Box<SessionModel> archiveBox;
 
+  LocalVoteServer? voteServer;
+  String? localIp;
+  final int localPort = 8080;
+
   @override
   void initState() {
     super.initState();
-    Hive.openBox<SessionModel>('sessions').then((box) {
-      setState(() {
-        sessionBox = box;
-      });
+    _openBoxes();
+    _startLocalServer();
+  }
+
+  Future<void> _openBoxes() async {
+    sessionBox = await Hive.openBox<SessionModel>('sessions');
+    archiveBox = await Hive.openBox<SessionModel>('archived_sessions');
+    setState(() {}); // odśwież, jeśli dane już są
+  }
+
+  Future<void> _startLocalServer() async {
+    voteServer = LocalVoteServer(port: localPort);
+    await voteServer!.start();
+
+    final ip = await getLocalIpAddress();
+    setState(() {
+      localIp = ip;
     });
-    Hive.openBox<SessionModel>('archived_sessions').then((box) {
-      setState(() {
-        archiveBox = box;
-      });
-    });
+
+    print('serwer WebSocket: ws://$localIp:$localPort');
   }
 
   void _closeSession(String id) async {
     final session = sessionBox.get(id);
     if (session != null) {
-      final archiveBox = await Hive.openBox<SessionModel>('archived_sessions');
       await archiveBox.put(session.id, session);
       await sessionBox.delete(id);
       setState(() {});
@@ -46,7 +61,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   @override
+  void dispose() {
+    voteServer?.stop();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final activeSessions = sessionBox.values.toList();
+    final archivedSessions = archiveBox.values.toList();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Panel administratora'),
@@ -77,8 +101,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
-            if (Hive.isBoxOpen('sessions') && sessionBox.isNotEmpty)
-              ...sessionBox.values.map(
+            if (activeSessions.isNotEmpty)
+              ...activeSessions.map(
                 (session) => Card(
                   child: Column(
                     children: [
@@ -92,11 +116,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           child: const Text('ZAMKNIJ SESJĘ'),
                         ),
                       ),
-                      QrImageView(
-                        data: jsonEncode(session.toJson()),
-                        version: QrVersions.auto,
-                        size: 200.0,
-                      ),
+                      if (localIp != null)
+                        QrImageView(
+                          data: jsonEncode({
+                            'serverUrl': 'ws://$localIp:$localPort',
+                            'session': session.toJson(),
+                          }),
+                          version: QrVersions.auto,
+                          size: 200.0,
+                        )
+                      else
+                        const Padding(
+                          padding: EdgeInsets.all(16.0),
+                          child: Text('⏳ Pobieranie adresu IP...'),
+                        ),
                       const SizedBox(height: 12),
                     ],
                   ),
@@ -110,8 +143,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
-            if (Hive.isBoxOpen('archived_sessions') && archiveBox.isNotEmpty)
-              ...archiveBox.values.map(
+            if (archivedSessions.isNotEmpty)
+              ...archivedSessions.map(
                 (session) => Card(
                   child: ListTile(
                     title: Text(session.title),

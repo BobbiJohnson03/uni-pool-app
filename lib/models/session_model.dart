@@ -1,21 +1,23 @@
 import 'package:hive/hive.dart';
 import 'question_model.dart';
-
 part 'session_model.g.dart';
+
+/* główna encja aplikacji definiująca jedną sesję głosowania, 
+czyli całe "wydarzenie głosowania", którą można rozesłać, przeprowadzić i potem zarchiwizować */
 
 @HiveType(typeId: 0)
 class SessionModel extends HiveObject {
   @HiveField(0)
-  String id;
+  String id; // kod sesji - generowany podczas utworzenia głosowania, dzięki niemu można dołączyć do głosowania
 
   @HiveField(1)
-  String title;
+  String title; // nazwa sesji głosowania
 
   @HiveField(2)
-  bool isAnonymous;
+  bool isAnonymous; // czy głosowanie będzie anonimowe
 
   @HiveField(3)
-  List<QuestionModel> questions;
+  List<QuestionModel> questions; // lista wszystkich pytań w sesji
 
   @HiveField(4)
   DateTime createdAt;
@@ -24,25 +26,25 @@ class SessionModel extends HiveObject {
   DateTime? endsAt;
 
   @HiveField(6)
-  bool isActive;
+  bool isActive; // czy sesja jest obecnie otwarta
 
   @HiveField(7)
-  String adminDeviceId;
+  String adminDeviceId; // id urządzenia admina
 
   @HiveField(8)
-  bool autoClose;
+  bool autoClose; // automatyczne zamknięcie sesji
 
   @HiveField(9)
-  int? maxParticipants;
+  int? maxParticipants; // limit liczby uczestników
 
   @HiveField(10)
-  bool showResultsAfterVoting;
+  bool showResultsAfterVoting; // czy pokazać wyniki po oddaniu głosu
 
   @HiveField(11)
-  List<String> participantDeviceIds;
+  List<String> participantDeviceIds; // lista ID urządzeń, które już oddały głos
 
   @HiveField(12)
-  bool isValid;
+  bool isValid; // do sprawdzenia czy sesja przeszła walidację i jest ważna
 
   @HiveField(13)
   DateTime? lastModified;

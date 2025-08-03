@@ -3,7 +3,7 @@ import 'package:hive/hive.dart';
 import '../models/session_model.dart';
 
 class VoterJoinScreen extends StatefulWidget {
-  const VoterJoinScreen({Key? key}) : super(key: key);
+  const VoterJoinScreen({super.key});
 
   @override
   State<VoterJoinScreen> createState() => _VoterJoinScreenState();
@@ -21,7 +21,14 @@ class _VoterJoinScreenState extends State<VoterJoinScreen> {
     if (box.containsKey(code)) {
       final session = box.get(code);
       // Przejście do ekranu głosowania
-      Navigator.pushReplacementNamed(context, '/vote', arguments: session);
+      Navigator.pushReplacementNamed(
+        context,
+        '/vote',
+        arguments: {
+          'session': session,
+          'webSocketClient': null, // jeśli nie używamy WebSocket w tym trybie
+        },
+      );
     } else {
       setState(() {
         error = 'Nie znaleziono sesji o podanym kodzie';
